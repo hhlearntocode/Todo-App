@@ -7,11 +7,21 @@ import { Card } from '@/components/ui/card'
 import { useTasks, useReorderTasks } from '@/hooks/use-tasks'
 import { useFilters } from '@/store'
 import { Loader2, AlertCircle } from 'lucide-react'
-import { Task } from '@/types'
+// no-op
 
 export function TaskList() {
   const { filters } = useFilters()
-  const { data: tasksResponse, isLoading, error } = useTasks(filters)
+  // Normalize filters: convert nulls to undefined to match TaskQuery type
+  const normalizedFilters = {
+    ...filters,
+    q: filters.search || undefined, // Map 'search' to 'q' for backend
+    completed: filters.completed === null ? undefined : filters.completed,
+    priority: filters.priority === null ? undefined : filters.priority,
+    tag: filters.tag === null ? undefined : filters.tag,
+  }
+  // Remove 'search' since we mapped it to 'q'
+  delete (normalizedFilters as any).search
+  const { data: tasksResponse, isLoading, error } = useTasks(normalizedFilters)
   const reorderTasks = useReorderTasks()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
 
@@ -21,12 +31,16 @@ export function TaskList() {
     const { active, over } = event
     setDraggedTaskId(null)
 
+    console.log('Drag end:', { active: active.id, over: over?.id })
+
     if (!over || active.id === over.id) {
       return
     }
 
     const oldIndex = tasks.findIndex((task) => task.id === active.id)
     const newIndex = tasks.findIndex((task) => task.id === over.id)
+
+    console.log('Reorder:', { oldIndex, newIndex, tasksLength: tasks.length })
 
     if (oldIndex === -1 || newIndex === -1) {
       return
@@ -43,11 +57,13 @@ export function TaskList() {
       orderIndex: index,
     }))
 
+    console.log('Sending reorder data:', reorderData)
     reorderTasks.mutate(reorderData)
   }
 
   const handleDragStart = (event: any) => {
     setDraggedTaskId(event.active.id)
+    console.log('Drag started:', event.active.id)
   }
 
   if (isLoading) {
@@ -89,7 +105,7 @@ export function TaskList() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="h-full flex flex-col">
       <DndContext
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -97,13 +113,15 @@ export function TaskList() {
         modifiers={[restrictToVerticalAxis]}
       >
         <SortableContext items={tasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              isDragging={draggedTaskId === task.id}
-            />
-          ))}
+          <div className="flex-1 overflow-auto space-y-2 scrollbar-thin">
+            {tasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                isDragging={draggedTaskId === task.id}
+              />
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
     </div>

@@ -83,3 +83,64 @@ export function getTagColor(color: string): string {
   
   return colorMap[color] || colorMap.slate
 }
+
+// Deadline Pressure Mode: Calculate urgency level based on due date
+export function getDeadlinePressure(dueDate?: string) {
+  if (!dueDate) return 0
+  
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60)
+  
+  // Return pressure level (0-4)
+  if (diffHours < 0) return 4 // Overdue - maximum pressure
+  if (diffHours < 2) return 3 // Less than 2 hours - high pressure
+  if (diffHours < 24) return 2 // Less than 1 day - medium pressure  
+  if (diffHours < 72) return 1 // Less than 3 days - low pressure
+  return 0 // More than 3 days - no pressure
+}
+
+// Get deadline pressure styling
+export function getDeadlinePressureStyles(pressureLevel: number, isCompleted: boolean = false) {
+  if (isCompleted) return ''
+  
+  const pressureStyles = {
+    0: '', // No pressure
+    1: 'border-l-4 border-l-yellow-400 bg-yellow-50/50 dark:border-l-yellow-500 dark:bg-yellow-900/20', // Low pressure - yellow accent
+    2: 'border-l-4 border-l-orange-400 bg-orange-50/50 dark:border-l-orange-500 dark:bg-orange-900/20', // Medium pressure - orange accent
+    3: 'border-l-4 border-l-red-400 bg-red-50/50 shadow-red-100 dark:border-l-red-500 dark:bg-red-900/20 dark:shadow-red-900/20', // High pressure - red accent
+    4: 'border-l-4 border-l-red-600 bg-red-100/80 shadow-lg shadow-red-200 animate-pulse dark:border-l-red-400 dark:bg-red-900/40 dark:shadow-red-900/30' // Overdue - intense red
+  }
+  
+  return pressureStyles[pressureLevel as keyof typeof pressureStyles] || ''
+}
+
+// Get time remaining text with urgency
+export function getTimeRemainingText(dueDate?: string) {
+  if (!dueDate) return ''
+  
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffMs = due.getTime() - now.getTime()
+  const diffHours = diffMs / (1000 * 60 * 60)
+  const diffDays = diffMs / (1000 * 60 * 60 * 24)
+  
+  if (diffMs < 0) {
+    const overdueDays = Math.abs(Math.floor(diffDays))
+    const overdueHours = Math.abs(Math.floor(diffHours % 24))
+    if (overdueDays > 0) {
+      return `${overdueDays}d overdue`
+    } else {
+      return `${overdueHours}h overdue`
+    }
+  }
+  
+  if (diffHours < 1) {
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    return `${minutes}m left`
+  } else if (diffHours < 24) {
+    return `${Math.floor(diffHours)}h left`
+  } else {
+    return `${Math.floor(diffDays)}d left`
+  }
+}

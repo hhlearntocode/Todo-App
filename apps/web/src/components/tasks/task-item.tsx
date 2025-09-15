@@ -12,7 +12,8 @@ import {
   Edit, 
   Trash2, 
   Copy,
-  GripVertical 
+  GripVertical,
+  Clock
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -23,8 +24,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Task } from '@/types'
 import { useToggleTask, useDeleteTask } from '@/hooks/use-tasks'
-import { useSelection, useModals } from '@/store'
-import { cn, formatDate, isToday, isOverdue, getPriorityColor, getTagColor } from '@/lib/utils'
+import { useSelection, useModals, useFilters } from '@/store'
+import { useConfetti } from '@/hooks/use-confetti'
+import { cn, formatDate, isToday, isOverdue, getPriorityColor, getTagColor, getDeadlinePressure, getDeadlinePressureStyles, getTimeRemainingText } from '@/lib/utils'
 
 interface TaskItemProps {
   task: Task
@@ -33,10 +35,12 @@ interface TaskItemProps {
 
 export function TaskItem({ task, isDragging }: TaskItemProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { selectedTasks, toggleTaskSelection } = useSelection()
+  const { selectedTasks, toggleTaskSelection, bulkSelectionMode } = useSelection()
   const { setEditingTaskId } = useModals()
+  const { setFilters } = useFilters()
   const toggleTask = useToggleTask()
   const deleteTask = useDeleteTask()
+  const { triggerConfetti } = useConfetti()
 
   const {
     attributes,
@@ -54,22 +58,33 @@ export function TaskItem({ task, isDragging }: TaskItemProps) {
   }), [transform, transition])
 
   // Memoized computed values
-  const computedValues = useMemo(() => ({
-    isSelected: selectedTasks.includes(task.id),
-    isTaskOverdue: task.dueDate && !task.completed && isOverdue(task.dueDate),
-    isTaskDueToday: task.dueDate && !task.completed && isToday(task.dueDate),
-    formattedDate: task.dueDate ? formatDate(task.dueDate) : null,
-    priorityColor: getPriorityColor(task.priority),
-  }), [task.id, task.dueDate, task.completed, task.priority, selectedTasks])
+  const computedValues = useMemo(() => {
+    const deadlinePressure = getDeadlinePressure(task.dueDate)
+    const deadlinePressureStyles = getDeadlinePressureStyles(deadlinePressure, task.completed)
+    const timeRemaining = getTimeRemainingText(task.dueDate)
+    
+    return {
+      isSelected: selectedTasks.includes(task.id),
+      isTaskOverdue: task.dueDate && !task.completed && isOverdue(task.dueDate),
+      isTaskDueToday: task.dueDate && !task.completed && isToday(task.dueDate),
+      formattedDate: task.dueDate ? formatDate(task.dueDate) : null,
+      priorityColor: getPriorityColor(task.priority),
+      deadlinePressure,
+      deadlinePressureStyles,
+      timeRemaining,
+    }
+  }, [task.id, task.dueDate, task.completed, task.priority, selectedTasks])
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleToggleComplete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleToggleComplete = useCallback((checked: boolean | 'indeterminate') => {
+    // If task is being marked as completed, trigger confetti
+    if (checked && !task.completed) {
+      setTimeout(() => triggerConfetti(), 200) // Delay to let the animation start
+    }
     toggleTask.mutate(task.id)
-  }, [toggleTask, task.id])
+  }, [toggleTask, task.id, task.completed, triggerConfetti])
 
-  const handleSelectTask = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleSelectTask = useCallback((checked: boolean | 'indeterminate') => {
     toggleTaskSelection(task.id)
   }, [toggleTaskSelection, task.id])
 
@@ -88,43 +103,59 @@ export function TaskItem({ task, isDragging }: TaskItemProps) {
     setIsMenuOpen(false)
   }, [])
 
+  const handleTagClick = useCallback((tagName: string) => {
+    // Filter tasks by clicked tag
+    setFilters({ tag: tagName })
+  }, [setFilters])
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={cn(
         "group relative transition-all duration-200 hover:shadow-md",
-        isDragging || isSortableDragging && "opacity-50 rotate-2 shadow-lg",
+        (isDragging || isSortableDragging) && "opacity-70 rotate-1 shadow-lg scale-105 z-10",
         task.completed && "task-completed",
         computedValues.isTaskOverdue && "task-overdue",
         computedValues.isTaskDueToday && "task-due-today",
         computedValues.isSelected && "ring-2 ring-primary",
-        `task-priority-${task.priority}`
+        `task-priority-${task.priority}`,
+        computedValues.deadlinePressureStyles
       )}
     >
       <div className="flex items-start gap-3 p-4">
-        {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {/* Selection checkbox (only show when bulk mode is active) */}
+        {bulkSelectionMode && (
+          <Checkbox
+            checked={computedValues.isSelected}
+            onCheckedChange={handleSelectTask}
+            className="mt-1"
+            title="Select for bulk operations"
+          />
+        )}
 
-        {/* Selection checkbox */}
-        <Checkbox
-          checked={computedValues.isSelected}
-          onCheckedChange={handleSelectTask}
-          className="mt-1"
-        />
-
-        {/* Task completion checkbox */}
+        {/* Main task completion checkbox - larger and more prominent */}
         <Checkbox
           checked={task.completed}
           onCheckedChange={handleToggleComplete}
-          className="mt-1"
+          className={cn(
+            "mt-1 h-5 w-5 transition-all duration-300",
+            task.completed && "task-checkbox-completed"
+          )}
+          title="Mark task as completed"
         />
+
+        {/* Drag handle - always visible when not in bulk selection mode */}
+        {!bulkSelectionMode && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground mt-1 opacity-50 hover:opacity-100 transition-opacity"
+            title="Drag to reorder"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Task content */}
         <div className="flex-1 min-w-0">
@@ -132,8 +163,8 @@ export function TaskItem({ task, isDragging }: TaskItemProps) {
             <div className="flex-1 min-w-0">
               <h3
                 className={cn(
-                  "font-medium text-sm leading-5 break-words",
-                  task.completed && "line-through text-muted-foreground"
+                  "font-medium text-sm leading-5 break-words task-title",
+                  task.completed && "text-muted-foreground"
                 )}
               >
                 {task.title}
@@ -143,7 +174,7 @@ export function TaskItem({ task, isDragging }: TaskItemProps) {
                 <p
                   className={cn(
                     "text-sm text-muted-foreground mt-1 line-clamp-2",
-                    task.completed && "line-through"
+                    task.completed && "opacity-70"
                   )}
                 >
                   {task.description}
@@ -164,31 +195,89 @@ export function TaskItem({ task, isDragging }: TaskItemProps) {
                   />
                 </div>
 
-                {/* Due date */}
+                {/* Due date with deadline pressure */}
                 {task.dueDate && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span
+                  <div className="flex items-center gap-1 text-xs">
+                    <Calendar 
                       className={cn(
-                        computedValues.isTaskOverdue && "text-red-600 font-medium",
-                        computedValues.isTaskDueToday && "text-yellow-600 font-medium"
+                        "h-3 w-3",
+                        computedValues.deadlinePressure >= 3 && "text-red-500",
+                        computedValues.deadlinePressure === 2 && "text-orange-500",
+                        computedValues.deadlinePressure === 1 && "text-yellow-500",
+                        computedValues.deadlinePressure === 0 && "text-muted-foreground"
                       )}
-                    >
-                      {computedValues.formattedDate}
-                    </span>
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span
+                        className={cn(
+                          "transition-colors",
+                          computedValues.deadlinePressure >= 4 && "text-red-600 font-bold",
+                          computedValues.deadlinePressure === 3 && "text-red-500 font-medium",
+                          computedValues.deadlinePressure === 2 && "text-orange-500 font-medium",
+                          computedValues.deadlinePressure === 1 && "text-yellow-600",
+                          computedValues.deadlinePressure === 0 && "text-muted-foreground"
+                        )}
+                      >
+                        {computedValues.formattedDate}
+                      </span>
+                      {computedValues.timeRemaining && (
+                        <span 
+                          className={cn(
+                            "text-[10px] font-medium",
+                            computedValues.deadlinePressure >= 4 && "text-red-600",
+                            computedValues.deadlinePressure === 3 && "text-red-500",
+                            computedValues.deadlinePressure === 2 && "text-orange-500",
+                            computedValues.deadlinePressure === 1 && "text-yellow-600",
+                            computedValues.deadlinePressure === 0 && "text-muted-foreground"
+                          )}
+                        >
+                          {computedValues.timeRemaining}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {/* Tags */}
-                {task.tags.map((tag) => (
-                  <Badge
-                    key={tag.id}
-                    variant="secondary"
-                    className={cn("text-xs h-5", getTagColor(tag.color))}
-                  >
-                    {tag.name}
-                  </Badge>
-                ))}
+                {task.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {task.tags.map((tag) => (
+                      <Badge
+                        key={tag.id}
+                        variant="outline"
+                        className={cn(
+                          "text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors",
+                          task.completed && "opacity-60"
+                        )}
+                        style={{ borderColor: getTagColor(tag.color) }}
+                        onClick={() => handleTagClick(tag.name)}
+                        title={`Filter by ${tag.name}`}
+                      >
+                        {tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Time Tracking */}
+                {(task.estimatedMinutes || task.actualMinutes) && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>
+                      {task.estimatedMinutes && `Est: ${Math.floor(task.estimatedMinutes / 60)}h ${task.estimatedMinutes % 60}m`}
+                      {task.estimatedMinutes && task.actualMinutes && ' • '}
+                      {task.actualMinutes && `Act: ${Math.floor(task.actualMinutes / 60)}h ${task.actualMinutes % 60}m`}
+                    </span>
+                    {task.estimatedMinutes && task.actualMinutes && (
+                      <Badge 
+                        variant={task.actualMinutes > task.estimatedMinutes ? "destructive" : "secondary"}
+                        className="h-4 text-[10px]"
+                      >
+                        {task.actualMinutes > task.estimatedMinutes ? '+' : ''}{task.actualMinutes - task.estimatedMinutes}m
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

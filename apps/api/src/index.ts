@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -48,6 +50,20 @@ declare module 'fastify' {
     prisma: PrismaClient;
   }
 }
+
+// Root route
+fastify.get('/', async () => {
+  return { 
+    message: 'Todo App API', 
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      tasks: '/api/v1/tasks',
+      tags: '/api/v1/tags'
+    }
+  };
+});
 
 // Health check
 fastify.get('/health', async () => {

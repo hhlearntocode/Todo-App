@@ -11,17 +11,24 @@ datasource db {
 }
 
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  completed   Boolean  @default(false)
-  priority    Int      @default(2) // 1=High, 2=Medium, 3=Low
-  dueDate     DateTime?
-  orderIndex  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  completed       Boolean  @default(false)
+  priority        Int      @default(2) // 1=High, 2=Medium, 3=Low
+  dueDate         DateTime?
+  orderIndex      Int      @default(0)
   
-  tags        TaskTag[]
+  // Time tracking fields
+  estimatedMinutes Int?     // Estimated completion time in minutes
+  actualMinutes    Int?     // Actual time spent in minutes
+  startedAt        DateTime? // When user started working on this task
+  completedAt      DateTime? // When task was completed
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  tags            TaskTag[]
   
   @@map("tasks")
 }

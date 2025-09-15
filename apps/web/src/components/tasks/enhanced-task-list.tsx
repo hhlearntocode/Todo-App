@@ -11,7 +11,7 @@ import { useInfiniteTasks, useInfiniteScroll } from '@/hooks/use-infinite-tasks'
 import { useOptimizedSearch } from '@/hooks/use-optimized-search'
 import { useFilters } from '@/store'
 import { Loader2, AlertCircle, ChevronDown } from 'lucide-react'
-import { Task } from '@/types'
+// no-op
 
 const ITEM_HEIGHT = 120
 const OVERSCAN = 5
@@ -32,11 +32,19 @@ export function EnhancedTaskList({
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   
   // Choose between infinite query and regular query
-  const infiniteQuery = useInfiniteTasks({ ...filters, pageSize })
-  const regularQuery = useTasks(filters)
+  const normalizedFilters = {
+    ...filters,
+    q: filters.search || undefined, // Map 'search' to 'q' for backend
+    completed: filters.completed === null ? undefined : filters.completed,
+    priority: filters.priority === null ? undefined : filters.priority,
+    tag: filters.tag === null ? undefined : filters.tag,
+  }
+  // Remove 'search' since we mapped it to 'q'
+  delete (normalizedFilters as any).search
+  const infiniteQuery = useInfiniteTasks({ ...normalizedFilters, pageSize })
+  const regularQuery = useTasks(normalizedFilters)
   
   const {
-    data: tasksData,
     isLoading,
     error,
     fetchNextPage,
@@ -44,10 +52,9 @@ export function EnhancedTaskList({
     isFetchingNextPage,
   } = enableInfiniteScroll ? infiniteQuery : { 
     ...regularQuery, 
-    data: regularQuery.data?.data,
     fetchNextPage: () => {},
-    hasNextPage: false,
-    isFetchingNextPage: false,
+    hasNextPage: false as boolean,
+    isFetchingNextPage: false as boolean,
   }
 
   const reorderTasks = useReorderTasks()
@@ -80,7 +87,7 @@ export function EnhancedTaskList({
   // Infinite scroll setup
   const lastElementRef = useInfiniteScroll(
     fetchNextPage,
-    hasNextPage,
+    Boolean(hasNextPage),
     isFetchingNextPage
   )
 
@@ -222,7 +229,7 @@ export function EnhancedTaskList({
       // Regular scrolling for smaller lists
       return (
         <div 
-          className="space-y-2 overflow-auto scrollbar-thin max-h-full"
+          className="space-y-2 overflow-auto scrollbar-thin h-full"
           onScroll={handleScroll}
         >
           {filteredTasks.map((task, index) => {
@@ -262,7 +269,7 @@ export function EnhancedTaskList({
       </DndContext>
 
       {/* Load more button for infinite scroll */}
-      {enableInfiniteScroll && hasNextPage && (
+      {enableInfiniteScroll && Boolean(hasNextPage) && (
         <div className="flex justify-center pt-4">
           <Button
             variant="outline"

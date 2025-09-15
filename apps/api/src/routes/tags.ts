@@ -22,11 +22,37 @@ export async function tagRoutes(fastify: FastifyInstance) {
       }
     });
     
+    // Calculate task count for each tag (only non-completed tasks)
+    const tagsWithCount = await Promise.all(
+      tags.map(async (tag) => {
+        const taskCount = await fastify.prisma.taskTag.count({
+          where: {
+            tagId: tag.id,
+            task: {
+              completed: false
+            }
+          }
+        });
+        
+        return {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color,
+          taskCount
+        };
+      })
+    );
+    
+    // Sort by task count descending, then by name ascending
+    const sortedTags = tagsWithCount.sort((a, b) => {
+      if (b.taskCount !== a.taskCount) {
+        return b.taskCount - a.taskCount
+      }
+      return a.name.localeCompare(b.name)
+    });
+    
     return {
-      data: tags.map(tag => ({
-        ...tag,
-        taskCount: tag._count.tasks
-      }))
+      data: sortedTags
     };
   });
   

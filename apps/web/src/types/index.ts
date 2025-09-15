@@ -6,6 +6,11 @@ export interface Task {
   priority: number
   dueDate?: string
   orderIndex: number
+  // Time tracking fields
+  estimatedMinutes?: number
+  actualMinutes?: number
+  startedAt?: string
+  completedAt?: string
   createdAt: string
   updatedAt: string
   tags: Tag[]
@@ -23,6 +28,7 @@ export interface CreateTaskInput {
   description?: string
   priority?: number
   dueDate?: string
+  estimatedMinutes?: number
   tags?: string[]
 }
 
@@ -31,6 +37,7 @@ export interface UpdateTaskInput {
   description?: string
   priority?: number
   dueDate?: string
+  estimatedMinutes?: number
   tags?: string[]
 }
 
@@ -80,4 +87,4 @@ export interface FilterState {
   order: 'asc' | 'desc'
 }
 
-export type ViewMode = 'all' | 'today' | 'upcoming' | 'completed' | 'high-priority'
+export type ViewMode = 'all' | 'today' | 'upcoming' | 'completed' | 'high-priority' | 'tag' | 'do-now' | 'calendar' | 'analytics'

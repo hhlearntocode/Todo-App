@@ -22,7 +22,8 @@ export function TaskForm({ taskId, onSuccess, onCancel }: TaskFormProps) {
     title: '',
     description: '',
     priority: 2,
-    dueDate: '',
+    dueDate: isEditing ? '' : new Date().toISOString().split('T')[0], // Auto set to today for new tasks
+    estimatedMinutes: undefined,
     tags: [],
   })
   const [newTag, setNewTag] = useState('')
@@ -43,6 +44,7 @@ export function TaskForm({ taskId, onSuccess, onCancel }: TaskFormProps) {
         description: task.description || '',
         priority: task.priority,
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+        estimatedMinutes: task.estimatedMinutes,
         tags: task.tags.map(tag => tag.name),
       })
     }
@@ -127,8 +129,8 @@ export function TaskForm({ taskId, onSuccess, onCancel }: TaskFormProps) {
         />
       </div>
 
-      {/* Priority and Due Date */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Priority, Due Date, and Estimated Time */}
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="priority">Priority</Label>
           <select
@@ -150,6 +152,21 @@ export function TaskForm({ taskId, onSuccess, onCancel }: TaskFormProps) {
             type="date"
             value={formData.dueDate}
             onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="estimatedMinutes">Est. Time (min)</Label>
+          <Input
+            id="estimatedMinutes"
+            type="number"
+            min="1"
+            value={formData.estimatedMinutes || ''}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              estimatedMinutes: e.target.value ? parseInt(e.target.value) : undefined 
+            }))}
+            placeholder="e.g. 30"
           />
         </div>
       </div>

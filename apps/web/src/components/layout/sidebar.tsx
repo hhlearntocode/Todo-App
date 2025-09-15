@@ -5,11 +5,14 @@ import {
   Clock, 
   AlertTriangle, 
   Tag,
-  X
+  X,
+  Zap,
+  CalendarDays,
+  BarChart3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useSidebar, useViewMode } from '@/store'
+import { useSidebar, useViewMode, useFilters } from '@/store'
 import { cn, getTagColor } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { tagsApi } from '@/lib/api'
@@ -44,9 +47,30 @@ function SidebarItem({ to, icon, label, count, isActive, onClick }: SidebarItemP
   )
 }
 
+function SidebarButton({ icon, label, count, isActive, onClick }: Omit<SidebarItemProps, 'to'>) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+      )}
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      {count !== undefined && (
+        <Badge variant="secondary" className="h-5 text-xs">
+          {count}
+        </Badge>
+      )}
+    </button>
+  )
+}
+
 export function Sidebar() {
   const { isOpen, setOpen } = useSidebar()
-  const { mode } = useViewMode()
+  const { mode, setMode } = useViewMode()
+  const { filters } = useFilters()
   const location = useLocation()
 
   const { data: tagsResponse } = useQuery({
@@ -101,6 +125,26 @@ export function Sidebar() {
                   onClick={handleItemClick}
                 />
                 <SidebarItem
+                  to="/do-now"
+                  icon={<Zap className="h-4 w-4" />}
+                  label="Do Now"
+                  isActive={location.pathname === '/do-now' || mode === 'do-now'}
+                  onClick={() => {
+                    setMode('do-now')
+                    handleItemClick()
+                  }}
+                />
+                <SidebarItem
+                  to="/calendar"
+                  icon={<CalendarDays className="h-4 w-4" />}
+                  label="Calendar"
+                  isActive={location.pathname === '/calendar' || mode === 'calendar'}
+                  onClick={() => {
+                    setMode('calendar')
+                    handleItemClick()
+                  }}
+                />
+                <SidebarItem
                   to="/today"
                   icon={<Clock className="h-4 w-4" />}
                   label="Today"
@@ -130,6 +174,20 @@ export function Sidebar() {
                 />
               </div>
 
+              {/* Analytics section */}
+              <div className="pt-4">
+                <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Analytics
+                </h3>
+                <SidebarItem
+                  to="/analytics"
+                  icon={<BarChart3 className="h-4 w-4" />}
+                  label="Analytics"
+                  isActive={location.pathname === '/analytics'}
+                  onClick={handleItemClick}
+                />
+              </div>
+
               {/* Tags section */}
               {tags.length > 0 && (
                 <div className="pt-4">
@@ -138,9 +196,18 @@ export function Sidebar() {
                   </h3>
                   <div className="space-y-1">
                     {tags.map((tag) => (
-                      <div
+                      <button
                         key={tag.id}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => {
+                          setMode('tag', tag.name)
+                          handleItemClick()
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                          mode === 'tag' && filters.tag === tag.name 
+                            ? "bg-accent text-accent-foreground" 
+                            : "text-muted-foreground"
+                        )}
                       >
                         <Tag className="h-4 w-4" />
                         <span className="flex-1">{tag.name}</span>
@@ -152,7 +219,7 @@ export function Sidebar() {
                             {tag.taskCount || 0}
                           </Badge>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

@@ -19,11 +19,11 @@ export async function taskRoutes(fastify: FastifyInstance) {
     
     const where: any = {};
     
-    // Search filter
+    // Search filter (SQLite case-insensitive search)
     if (query.q) {
       where.OR = [
-        { title: { contains: query.q, mode: 'insensitive' } },
-        { description: { contains: query.q, mode: 'insensitive' } }
+        { title: { contains: query.q } },
+        { description: { contains: query.q } }
       ];
     }
     
@@ -55,9 +55,15 @@ export async function taskRoutes(fastify: FastifyInstance) {
     const offset = (query.page - 1) * query.pageSize;
     const totalPages = Math.ceil(total / query.pageSize);
     
-    // Sort configuration
-    const orderBy: any = {};
-    orderBy[query.sortBy] = query.order;
+    // Sort configuration - always include orderIndex for consistent ordering
+    const orderBy: any = [
+      { orderIndex: 'asc' }, // Primary sort by order index for drag & drop
+    ];
+    
+    // Add secondary sort if different from orderIndex
+    if (query.sortBy !== 'orderIndex') {
+      orderBy.push({ [query.sortBy]: query.order });
+    }
     
     // Fetch tasks
     const tasks = await fastify.prisma.task.findMany({
@@ -355,5 +361,14 @@ export async function taskRoutes(fastify: FastifyInstance) {
     }
     
     return { data: { success: true, updatedCount: ids.length } };
+  });
+
+  // DELETE /api/v1/tasks/completed - Delete all completed tasks
+  fastify.delete('/tasks/completed', async (request: FastifyRequest, reply: FastifyReply) => {
+    const result = await fastify.prisma.task.deleteMany({
+      where: { completed: true }
+    });
+    
+    return { data: { success: true, deletedCount: result.count } };
   });
 }

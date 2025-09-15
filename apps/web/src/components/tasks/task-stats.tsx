@@ -1,10 +1,15 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, Clock, AlertTriangle } from 'lucide-react'
-import { useTasks } from '@/hooks/use-tasks'
+import { useQuery } from '@tanstack/react-query'
+import { tasksApi } from '@/lib/api'
 
 export function TaskStats() {
-  const { data: tasksResponse } = useTasks()
+  // Get all tasks for stats (not filtered by current view)
+  const { data: tasksResponse, isLoading, error } = useQuery({
+    queryKey: ['tasks-stats'],
+    queryFn: () => tasksApi.getTasks({}),
+  })
   const tasks = tasksResponse?.data || []
 
   const totalTasks = tasks.length
@@ -13,6 +18,21 @@ export function TaskStats() {
   const highPriorityTasks = tasks.filter(task => task.priority === 1 && !task.completed).length
 
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+            </div>
+          </Card>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="flex gap-4">

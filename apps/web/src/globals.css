@@ -89,7 +89,91 @@
   }
   
   .task-completed {
-    @apply opacity-60;
+    @apply opacity-75;
+    animation: taskComplete 0.5s ease-in-out;
+    background: linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: taskComplete 0.5s ease-in-out, shimmer 1s ease-in-out;
+  }
+  
+  .task-completed .task-title {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .task-completed .task-title::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: strikethrough 0.4s ease-out 0.1s forwards;
+  }
+  
+  .task-checkbox-completed {
+    animation: checkboxBounce 0.3s ease-out;
+  }
+  
+  @keyframes taskComplete {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.75;
+    }
+  }
+  
+  @keyframes strikethrough {
+    0% {
+      transform: scaleX(0);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+  
+  @keyframes checkboxBounce {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes confetti {
+    0% {
+      transform: translateY(-100vh) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  
+  .animate-confetti {
+    animation: confetti linear forwards;
   }
   
   .task-overdue {

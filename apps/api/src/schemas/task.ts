@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-export const prioritySchema = z.enum(['1', '2', '3']).transform(val => parseInt(val));
+// Accept both string and number inputs and coerce to a number between 1 and 3
+export const prioritySchema = z.coerce.number().int().min(1).max(3);
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title too long'),
   description: z.string().max(2000, 'Description too long').optional(),
-  priority: prioritySchema.optional().default('2'),
+  priority: prioritySchema.optional().default(2),
   dueDate: z.string().datetime().optional().or(z.date().optional()),
   tags: z.array(z.string()).optional().default([]),
 });

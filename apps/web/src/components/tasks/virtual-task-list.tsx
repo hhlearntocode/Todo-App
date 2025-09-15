@@ -11,7 +11,8 @@ import { Loader2, AlertCircle } from 'lucide-react'
 import { Task } from '@/types'
 
 const ITEM_HEIGHT = 120 // Estimated height of each task item
-const OVERSCAN = 5 // Number of items to render outside visible area
+const OVERSCAN = 3 // Number of items to render outside visible area (reduced for better performance)
+const BATCH_SIZE = 50 // Process tasks in batches for better performance
 
 export function VirtualTaskList() {
   const { filters } = useFilters()

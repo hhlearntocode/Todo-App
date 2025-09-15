@@ -21,17 +21,28 @@ class ApiError extends Error {
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`
   
+  // Only set Content-Type header if there's a body
+  const headers: Record<string, string> = {
+    ...options.headers,
+  }
+  
+  if (options.body) {
+    headers['Content-Type'] = 'application/json'
+  }
+  
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   })
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
     throw new ApiError(response.status, errorData.message || `HTTP ${response.status}`)
+  }
+
+  // Handle responses with no content (like 204 No Content)
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T
   }
 
   return response.json()

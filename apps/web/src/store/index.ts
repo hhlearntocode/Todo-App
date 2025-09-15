@@ -13,7 +13,7 @@ interface AppState {
 
   // Current view mode
   viewMode: ViewMode
-  setViewMode: (mode: ViewMode) => void
+  setViewMode: (mode: ViewMode, tagName?: string) => void
 
   // Filters
   filters: FilterState
@@ -25,6 +25,8 @@ interface AppState {
   setSelectedTasks: (ids: string[]) => void
   toggleTaskSelection: (id: string) => void
   clearSelection: () => void
+  bulkSelectionMode: boolean
+  setBulkSelectionMode: (enabled: boolean) => void
 
   // Task creation modal
   isCreateModalOpen: boolean
@@ -56,12 +58,12 @@ export const useAppStore = create<AppState>()(
       setTheme: (theme) => set({ theme }),
 
       // UI State
-      sidebarOpen: true,
+      sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
       // Current view mode
       viewMode: 'all',
-      setViewMode: (mode) => {
+      setViewMode: (mode, tagName) => {
         const filters = { ...defaultFilters }
         
         switch (mode) {
@@ -78,6 +80,22 @@ export const useAppStore = create<AppState>()(
           case 'high-priority':
             filters.priority = 1
             filters.completed = false
+            break
+          case 'tag':
+            if (tagName) {
+              filters.tag = tagName
+            }
+            break
+          case 'do-now':
+            filters.completed = false
+            // Do Now view will be sorted by urgency on the client side
+            break
+          case 'calendar':
+            filters.completed = false
+            // Calendar view shows only incomplete tasks with due dates
+            break
+          case 'analytics':
+            // Analytics view doesn't need task filters
             break
           default:
             // 'all' - no additional filters
@@ -104,7 +122,12 @@ export const useAppStore = create<AppState>()(
             ? state.selectedTasks.filter(taskId => taskId !== id)
             : [...state.selectedTasks, id]
         })),
-      clearSelection: () => set({ selectedTasks: [] }),
+      clearSelection: () => set({ selectedTasks: [], bulkSelectionMode: false }),
+      bulkSelectionMode: false,
+      setBulkSelectionMode: (enabled) => set({ 
+        bulkSelectionMode: enabled,
+        ...(enabled ? {} : { selectedTasks: [] })
+      }),
 
       // Task creation modal
       isCreateModalOpen: false,
@@ -150,6 +173,8 @@ export const useSelection = () => useAppStore((state) => ({
   setSelectedTasks: state.setSelectedTasks,
   toggleTaskSelection: state.toggleTaskSelection,
   clearSelection: state.clearSelection,
+  bulkSelectionMode: state.bulkSelectionMode,
+  setBulkSelectionMode: state.setBulkSelectionMode,
 }))
 export const useModals = () => useAppStore((state) => ({
   isCreateModalOpen: state.isCreateModalOpen,

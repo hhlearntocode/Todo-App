@@ -17,7 +17,11 @@ export function Layout({ children }: LayoutProps) {
   // Update view mode based on route
   useEffect(() => {
     const path = location.pathname
-    if (path === '/today') {
+    if (path === '/do-now') {
+      setMode('do-now')
+    } else if (path === '/calendar') {
+      setMode('calendar')
+    } else if (path === '/today') {
       setMode('today')
     } else if (path === '/upcoming') {
       setMode('upcoming')
@@ -25,6 +29,9 @@ export function Layout({ children }: LayoutProps) {
       setMode('completed')
     } else if (path === '/high-priority') {
       setMode('high-priority')
+    } else if (path === '/analytics') {
+      // Analytics has its own page, no view mode needed
+      return
     } else {
       setMode('all')
     }
@@ -38,7 +45,10 @@ export function Layout({ children }: LayoutProps) {
         <main 
           className={cn(
             "flex-1 overflow-hidden transition-all duration-300",
-            sidebarOpen ? "lg:ml-64" : "ml-0"
+            // Always provide margin on desktop when sidebar is open
+            "lg:ml-64",
+            // On mobile, no margin needed as sidebar is overlay
+            "ml-0"
           )}
         >
           <div className="h-full p-6">
